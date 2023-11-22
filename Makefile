@@ -562,16 +562,21 @@ ifeq (,$(findstring baremetalhosts.metal3.io, ${BMO_CRDS}))
 endif
 
 ##@ OPENSTACK
-.PHONY: openstack_prep
-openstack_prep: export IMAGE=${OPENSTACK_IMG}
-openstack_prep: $(if $(findstring true,$(BMO_SETUP)), crc_bmo_setup) ## creates the files to install the operator using olm
-openstack_prep: $(if $(findstring true,$(NETWORK_BGP)), nmstate nncp netattach metallb metallb_config)
-openstack_prep: $(if $(findstring true,$(NETWORK_ISOLATION)), nmstate nncp netattach metallb metallb_config)
+.PHONY: openstack_genolm
+openstack_genolm: export IMAGE=${OPENSTACK_IMG}
+openstack_genolm: ## Generate olm files for installing OpenStack Operator.Set OPENSTACK_IMG for custom image
 	$(eval $(call vars,$@,openstack))
 	bash scripts/gen-olm.sh
 
+.PHONY: openstack_prep
+openstack_prep: $(if $(findstring true,$(BMO_SETUP)), crc_bmo_setup) ## creates the files to install the operator using olm
+openstack_prep: $(if $(findstring true,$(NETWORK_BGP)), nmstate nncp netattach metallb metallb_config)
+openstack_prep: $(if $(findstring true,$(NETWORK_ISOLATION)), nmstate nncp netattach metallb metallb_config)
+openstack_prep: openstack_genolm
+
 .PHONY: openstack
-openstack: certmanager operator_namespace openstack_prep ## installs the operator, also runs the prep step. Set OPENSTACK_IMG for custom image.
+openstack: certmanager operator_namespace openstack_prep
+openstack: ## installs the operator, also runs the prep step. Set OPENSTACK_IMG for custom image.
 	$(eval $(call vars,$@,openstack))
 	oc apply -f ${OPERATOR_DIR}
 
